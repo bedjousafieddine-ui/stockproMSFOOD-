@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StockproMSFOOD</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#123b2a;color:white;padding:18px 22px;font-size:22px;font-weight:700}
+nav{display:flex;gap:8px;flex-wrap:wrap;background:white;padding:12px;border-bottom:1px solid #ddd}
+nav button{border:0;background:#eef2f0;padding:10px 14px;border-radius:8px;cursor:pointer}
+nav button.active{background:#123b2a;color:white}.page{padding:20px;max-width:1100px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.card{background:white;padding:18px;border-radius:12px;box-shadow:0 2px 8px #00000010}.num{font-size:28px;font-weight:700;margin-top:8px}
+section{display:none}section.active{display:block}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
+input,select{padding:11px;border:1px solid #ccd3d0;border-radius:8px;width:100%}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;background:white;padding:16px;border-radius:12px}
+button.primary{background:#123b2a;color:white;border:0;padding:11px 16px;border-radius:8px;cursor:pointer}
+table{width:100%;border-collapse:collapse;background:white;margin-top:15px;border-radius:10px;overflow:hidden}
+th,td{padding:11px;border-bottom:1px solid #eee;text-align:left}th{background:#eef2f0}
+.badge{padding:4px 8px;border-radius:12px;background:#e8f5ed}.warning{background:#fff2d8}.empty{background:#ffe2e2}
+.small{color:#64706b;font-size:13px}
+
+#loginScreen{position:fixed;inset:0;background:#123b2a;display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.loginBox{background:white;width:100%;max-width:390px;padding:28px;border-radius:16px;box-shadow:0 12px 40px #0004}
+.loginBox h1{margin-top:0;color:#123b2a}.loginBox input{margin:7px 0 12px}
+.loginError{color:#b00020;margin-top:10px;display:none}
+.logout{margin-left:auto;background:#8b1e1e!important;color:white}
+.userbar{background:#eaf2ee;padding:8px 20px;font-size:13px;color:#315244}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="loginBox">
+    <h1>StockproMSFOOD</h1>
+    <p>Connexion à votre espace de gestion</p>
+    <label>Nom d'utilisateur</label>
+    <input id="loginUser" autocomplete="username" placeholder="Utilisateur">
+    <label>Mot de passe</label>
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="Mot de passe">
+    <button class="primary" style="width:100%;margin-top:8px" onclick="login()">Se connecter</button>
+    <div id="loginError" class="loginError">Identifiants incorrects.</div>
+    <p class="small" style="margin-top:18px">Compte initial : <b>admin</b> / <b>admin123</b></p>
+  </div>
+</div>
+<div class="userbar">Utilisateur connecté : <b id="currentUser"></b><button class="logout" onclick="logout()">Déconnexion</button></div><header>StockproMSFOOD</header>
+<nav>
+<button class="active" onclick="show('dashboard',this)">Tableau de bord</button>
+<button onclick="show('products',this)">Produits</button>
+<button onclick="show('movement',this)">Mouvement</button><button onclick="show('users',this)">Utilisateurs</button>
+</nav>
+
+<div class="page">
+<section id="dashboard" class="active">
+<h2>Tableau de bord</h2>
+<div class="cards">
+<div class="card">Produits<div class="num" id="cProducts">0</div></div>
+<div class="card">Stock total<div class="num" id="cUnits">0</div><div class="small">unités équivalentes</div></div>
+<div class="card">Produits faibles<div class="num" id="cLow">0</div></div>
+<div class="card">Produits au poids<div class="num" id="cWeight">0</div></div>
+</div>
+<h3>Derniers mouvements</h3><div id="recent"></div>
+</section>
+
+<section id="products">
+<h2>Produits</h2>
+<div class="formgrid">
+<div><label>Nom du produit</label><input id="pName" placeholder="Ex. Jus orange"></div>
+<div><label>Référence</label><input id="pRef" placeholder="Ex. JUS-001"></div>
+<div><label>Type</label><select id="pType" onchange="toggleUnit()"><option value="carton">Cartons + unités</option><option value="weight">Poids</option></select></div>
+<div id="packBox"><label>Unités par carton</label><select id="pPack"><option>6</option><option>12</option><option>15</option><option>20</option><option>24</option><option>30</option><option>40</option><option>50</option><option>60</option></select></div>
+<div id="weightBox" style="display:none"><label>Unité de poids</label><select id="pWeight"><option>kg</option><option>g</option><option>tonne</option></select></div>
+<div><label>Seuil minimum</label><input id="pMin" type="number" value="0" min="0"></div>
+</div>
+<div class="toolbar"><button class="primary" onclick="addProduct()">Ajouter le produit</button></div>
+<table><thead><tr><th>Produit</th><th>Réf.</th><th>Conditionnement</th><th>Stock</th><th>Total</th><th>État</th></tr></thead><tbody id="productRows"></tbody></table>
+</section>
+
+<section id="movement">
+<h2>Entrée / sortie de stock</h2>
+<div class="formgrid">
+<div><label>Produit</label><select id="mProduct"></select></div>
+<div><label>Type</label><select id="mType"><option value="in">Entrée</option><option value="out">Sortie</option></select></div>
+<div id="cartonFields"><label>Cartons</label><input id="mCartons" type="number" min="0" value="0"></div>
+<div id="unitFields"><label>Unités restantes</label><input id="mUnits" type="number" min="0" value="0"></div>
+<div id="weightFields" style="display:none"><label>Poids</label><input id="mWeight" type="number" min="0" step="0.001" value="0"></div>
+</div>
+<div class="toolbar"><button class="primary" onclick="moveStock()">Enregistrer le mouvement</button></div>
+<p class="small">Exemple : 23 cartons + 6 unités est conservé séparément et converti automatiquement pour les calculs.</p>
+<div id="movementRows"></div>
+</section>
+</div>
+
+<script>
+
+let users=JSON.parse(localStorage.getItem('sp_users')||'null');
+if(!users){users=[{username:'admin',password:'admin123',role:'admin'}];localStorage.setItem('sp_users',JSON.stringify(users));}
+let loggedUser=JSON.parse(sessionStorage.getItem('sp_currentUser')||'null');
+
+function checkAuth(){
+  if(loggedUser){loginScreen.style.display='none';}
+  else loginScreen.style.display='flex';
+}
+function login(){
+  let u=loginUser.value.trim(), p=loginPass.value;
+  let found=users.find(x=>x.username===u&&x.password===p);
+  if(!found){loginError.style.display='block';return}
+  loggedUser=found;sessionStorage.setItem('sp_currentUser',JSON.stringify(found));
+  loginError.style.display='none';loginScreen.style.display='none';currentUserEl();
+  render();
+}
+function currentUserEl(){document.getElementById('currentUser').textContent=loggedUser?loggedUser.username:'';}
+function logout(){sessionStorage.removeItem('sp_currentUser');loggedUser=null;loginScreen.style.display='flex';loginUser.value='';loginPass.value='';}
+function addUser(){
+  if(!loggedUser || loggedUser.role!=='admin'){alert('Accès réservé à l’administrateur.');return}
+  let u=newUser.value.trim(), p=newPass.value, r=newRole.value;
+  if(!u||!p){alert('Remplis le nom et le mot de passe.');return}
+  if(users.some(x=>x.username===u)){alert('Cet utilisateur existe déjà.');return}
+  users.push({username:u,password:p,role:r});localStorage.setItem('sp_users',JSON.stringify(users));
+  newUser.value='';newPass.value='';render();
+}
+
+let products=JSON.parse(localStorage.getItem('sp_products')||'[]');
+let moves=JSON.parse(localStorage.getItem('sp_moves')||'[]');
+
+function save(){localStorage.setItem('sp_products',JSON.stringify(products));localStorage.setItem('sp_moves',JSON.stringify(moves));render()}
+function show(id,btn){document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render()}
+function toggleUnit(){let w=pType.value==='weight';packBox.style.display=w?'none':'block';weightBox.style.display=w?'block':'none';}
+function addProduct(){
+ let name=pName.value.trim(); if(!name){alert('Indique le nom du produit');return}
+ let type=pType.value, pack=type==='carton'?+pPack.value:0;
+ products.push({id:Date.now(),name,ref:pRef.value.trim(),type,pack,weightUnit:type==='weight'?pWeight.value:'',min:+pMin.value,cartons:0,units:0,weight:0});
+ pName.value=pRef.value=''; save();
+}
+function total(p){return p.type==='weight'?p.weight:(p.cartons*p.pack+p.units)}
+function stockText(p){return p.type==='weight'?p.weight+' '+p.weightUnit:p.cartons+' carton(s) + '+p.units+' unité(s)'}
+function moveStock(){
+ let p=products.find(x=>x.id==mProduct.value); if(!p)return;
+ let sign=mType.value==='in'?1:-1;
+ if(p.type==='weight'){let v=+mWeight.value;if(sign<0&&v>p.weight){alert('Stock insuffisant');return}p.weight=Math.max(0,p.weight+sign*v)}
+ else {let c=+mCartons.value,u=+mUnits.value;let delta=sign*(c*p.pack+u);let cur=total(p);if(delta<0&&-delta>cur){alert('Stock insuffisant');return}
+ let newTotal=cur+delta;p.cartons=Math.floor(newTotal/p.pack);p.units=newTotal%p.pack}
+ moves.unshift({date:new Date().toLocaleString('fr-FR'),product:p.name,type:mType.value,detail:p.type==='weight'?mWeight.value+' '+p.weightUnit:(mCartons.value+' carton(s) + '+mUnits.value+' unité(s)')});
+ moves=moves.slice(0,20);save();
+}
+function render(){
+ cProducts.textContent=products.length;cUnits.textContent=products.filter(p=>p.type==='carton').reduce((s,p)=>s+total(p),0);cLow.textContent=products.filter(p=>total(p)<=p.min).length;cWeight.textContent=products.filter(p=>p.type==='weight').length;
+ productRows.innerHTML=products.map(p=>`<tr><td>${p.name}</td><td>${p.ref||'-'}</td><td>${p.type==='weight'?'Poids':'Carton de '+p.pack}</td><td>${stockText(p)}</td><td>${total(p)} ${p.type==='weight'?p.weightUnit:'unités'}</td><td><span class="badge ${total(p)<=p.min?'empty':total(p)<=p.min*2?'warning':''}">${total(p)<=p.min?'Stock faible':'OK'}</span></td></tr>`).join('');
+ mProduct.innerHTML=products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+ let rp=products.find(p=>p.id==mProduct.value); if(rp){let w=rp.type==='weight';cartonFields.style.display=w?'none':'block';unitFields.style.display=w?'none':'block';weightFields.style.display=w?'block':'none'}
+ userRows.innerHTML=users.map(u=>`<tr><td>${u.username}</td><td>${u.role==='admin'?'Administrateur':'Employé'}</td></tr>`).join('');
+ movementRows.innerHTML=moves.length?'<table><thead><tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th></tr></thead><tbody>'+moves.map(m=>`<tr><td>${m.date}</td><td>${m.product}</td><td>${m.type==='in'?'Entrée':'Sortie'}</td><td>${m.detail}</td></tr>`).join('')+'</tbody></table>':'<p class="small">Aucun mouvement.</p>';
+ recent.innerHTML=moves.slice(0,5).map(m=>`<div class="card" style="margin:8px 0"><b>${m.type==='in'?'Entrée':'Sortie'}</b> — ${m.product}<br><span class="small">${m.detail} · ${m.date}</span></div>`).join('')||'<p class="small">Aucun mouvement.</p>';
+}
+mProduct.addEventListener('change',render);render(); checkAuth(); currentUserEl();
+</script>
+</body>
+</html>
